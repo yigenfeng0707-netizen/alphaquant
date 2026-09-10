@@ -1,0 +1,10 @@
+{
+  "sdk_type": "docker",
+  "resource_configuration": "platform/2v-cpu-16g-mem",
+  "port": 7860,
+  "env": {
+    "PORT": "7860",
+    "PYTHONPATH": "/app/backend",
+    "STATIC_DIR": "/app/frontend/dist"
+  }
+}

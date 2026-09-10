@@ -1,0 +1,49 @@
+name: Deploy AlphaQuant to ModelScope Studio
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - 'frontend/**'
+      - 'data/offline/**'
+      - 'deploy/modelscope/**'
+      - '.github/workflows/deploy-modelscope.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: modelscope-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate required secrets
+        env:
+          MODELSCOPE_API_TOKEN: ${{ secrets.MODELSCOPE_API_TOKEN }}
+          MS_STUDIO_OWNER: ${{ secrets.MS_STUDIO_OWNER }}
+          MS_STUDIO_NAME: ${{ secrets.MS_STUDIO_NAME }}
+        run: |
+          missing=0
+          for name in MODELSCOPE_API_TOKEN MS_STUDIO_OWNER MS_STUDIO_NAME; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Missing GitHub secret: $name"
+              missing=1
+            fi
+          done
+          exit "$missing"
+
+      - name: Deploy to ModelScope Studio
+        env:
+          MODELSCOPE_API_TOKEN: ${{ secrets.MODELSCOPE_API_TOKEN }}
+          MS_STUDIO_OWNER: ${{ secrets.MS_STUDIO_OWNER }}
+          MS_STUDIO_NAME: ${{ secrets.MS_STUDIO_NAME }}
+          MODELSCOPE_ENDPOINT: https://modelscope.cn
+          DEPLOY_COMMIT_MSG: "deploy: ${{ github.sha }}"
+          GITHUB_SHA: ${{ github.sha }}
+        run: bash deploy/modelscope/deploy.sh

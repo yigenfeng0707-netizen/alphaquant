@@ -1,0 +1,13 @@
+.git
+**/.git
+**/__pycache__
+**/*.pyc
+**/.venv
+**/venv
+frontend/node_modules
+frontend/dist
+**/.env
+**/.env.*
+data/audit/*.jsonl
+data/reports/*.md
+data/reports/*.html

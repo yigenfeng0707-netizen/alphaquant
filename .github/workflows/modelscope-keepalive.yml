@@ -1,0 +1,43 @@
+name: ModelScope Demo Keepalive
+
+on:
+  schedule:
+    - cron: '*/20 * * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: modelscope-keepalive
+  cancel-in-progress: false
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Ping AlphaQuant public demo URL
+        env:
+          MS_STUDIO_OWNER: ${{ secrets.MS_STUDIO_OWNER }}
+          MS_STUDIO_NAME: ${{ secrets.MS_STUDIO_NAME }}
+        run: |
+          set -euo pipefail
+          DEMO_URL="https://${MS_STUDIO_OWNER}-${MS_STUDIO_NAME}.ms.show"
+          echo "Target: $DEMO_URL"
+          echo "Time (UTC): $(date -u '+%Y-%m-%d %H:%M:%S')"
+          http_code=$(curl -sS -L --max-time 30 \
+            -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" \
+            -o /dev/null -w '%{http_code}' "$DEMO_URL" || true)
+          echo "HTTP status: $http_code"
+          case "$http_code" in
+            200|302)
+              echo "Keepalive success (instance reachable)"
+              ;;
+            403)
+              echo "HTTP 403 — studio may be private; ping logged, workflow not failed"
+              ;;
+            000)
+              echo "Request failed (timeout or network); logged, workflow not failed"
+              ;;
+            *)
+              echo "Unexpected status $http_code; logged, workflow not failed"
+              ;;
+          esac

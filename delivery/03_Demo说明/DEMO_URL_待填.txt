@@ -1,0 +1,12 @@
+公网 Demo URL：https://gsym236998-alphaquant.ms.show
+创空间：https://www.modelscope.cn/studios/gsym236998/alphaquant
+健康检查：https://gsym236998-alphaquant.ms.show/health
+案例1（离线）：https://gsym236998-alphaquant.ms.show/api/case1?source=offline
+
+本链接是 **AlphaQuant** 独立创空间。QuantInsight / https://www.modelscope.cn/studios/gsym236998/quantinsight-pro 是另一场比赛（AFAC），禁止当作本赛体验链接。
+
+本地：http://localhost:3000
+后端健康检查：http://127.0.0.1:8010/health
+OpenAPI：http://127.0.0.1:8010/docs
+启动：仓库根目录 .\scripts\dev.ps1
+保活：powershell -File scripts/keepalive.ps1

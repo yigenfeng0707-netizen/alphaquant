@@ -1,0 +1,57 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+.env.*
+!.env.example
+
+# Node
+frontend/node_modules/
+frontend/dist/
+npm-debug.log*
+yarn-error.log*
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+*.swp
+
+# Evidence / PII / archives (never commit)
+archive/
+assets/证据-*
+*身份证*
+*推荐表*
+
+# Temp / shots
+_tmp_*
+_tmp_e2e_shots/
+.pytest_cache/
+
+# 根目录扫描件原件（归档副本已在 archive/，均不入库）
+/*.pdf
+
+# Local runtime
+*.log
+backend/.cache/
+data/offline/.cache/
+data/audit/*.jsonl
+data/reports/*.md
+data/reports/*.html
+!data/audit/.gitkeep
+!data/reports/.gitkeep
+!data/reports/README.md
+
+# Demo video output (storyboard stays)
+demo-output/
+delivery/**/*.mp4
+docs/demo/*.mp4
+
+# Local tokens / secrets (never commit)
+*访问token*.txt
+**/modelscope*token*
+secrets/
