@@ -3,10 +3,12 @@
     <h2>组合优化</h2>
     <p class="sub">等权 / 风险平价 / 最小方差 / 最大夏普。风险平价为 SciPy 等风险贡献。</p>
     <el-button type="primary" data-testid="btn-optimize" :loading="loading" @click="load">优化入选篮子</el-button>
+    <el-switch v-model="sectorNeutral" active-text="行业中性" style="margin-left:12px" @change="load" />
     <el-button data-testid="btn-brinson" :loading="attrLoading" @click="loadAttr">加载 Brinson 归因</el-button>
     <div v-if="error" class="placeholder-box" style="margin-top:12px">{{ error }}</div>
     <template v-if="methods">
       <el-alert :title="payload.disclaimer" type="warning" :closable="false" show-icon style="margin-top:12px" />
+      <el-alert v-if="d.sector_neutral" :title="d.sector_note || '行业中性约束已启用：每个行业权重偏离等权基准不超过5%'" type="info" :closable="false" show-icon style="margin-top:8px" />
       <div class="kpi-row">
         <div class="kpi"><div class="label">风险平价夏普</div><div class="value up">{{ num(d.sharpe_rp) }}</div></div>
         <div class="kpi"><div class="label">等权夏普</div><div class="value">{{ num(d.sharpe_eq) }}</div></div>
@@ -49,6 +51,18 @@
           <el-table-column prop="volatility" label="波动" />
         </el-table>
       </el-card>
+      <el-card v-if="sectorExposure" style="margin-top:12px" data-testid="card-sector-exposure">
+        <template #header>行业暴露（{{ methods[method].label }}）</template>
+        <el-table :data="sectorExposure" size="small">
+          <el-table-column prop="sector" label="行业" />
+          <el-table-column label="组合权重"><template #default="{ row }">{{ pct(row.port_weight) }}</template></el-table-column>
+          <el-table-column label="基准权重"><template #default="{ row }">{{ pct(row.bench_weight) }}</template></el-table-column>
+          <el-table-column label="偏离"><template #default="{ row }">
+            <span :style="{ color: row.within_limit ? '#67c23a' : '#f56c6c' }">{{ row.deviation >= 0 ? '+' : '' }}{{ pct(row.deviation) }}</span>
+          </template></el-table-column>
+          <el-table-column label="是否达标"><template #default="{ row }">{{ row.within_limit ? '是' : '否' }}</template></el-table-column>
+        </el-table>
+      </el-card>
       <el-card style="margin-top:12px" data-testid="card-brinson">
         <template #header>Brinson 归因（相对等权篮子）</template>
         <div v-if="attrError" class="placeholder-box">{{ attrError }}</div>
@@ -87,6 +101,7 @@ const attrError = ref('')
 const attr = ref(null)
 const payload = ref(null)
 const method = ref('risk_parity')
+const sectorNeutral = ref(false)
 const pieEl = ref(null)
 let pie
 const d = computed(() => payload.value?.data)
@@ -102,6 +117,7 @@ const cmpRows = computed(() => keys.map((k) => {
     volatility: pct(x?.metrics?.volatility),
   }
 }))
+const sectorExposure = computed(() => methods.value?.[method.value]?.sector_exposure)
 
 function drawPie() {
   if (!pieEl.value || !methods.value) return
@@ -125,7 +141,8 @@ async function load() {
   loading.value = true
   error.value = ''
   try {
-    payload.value = await getJson(withSource('/api/optimize'))
+    const sn = sectorNeutral.value ? '&sector_neutral=true' : ''
+    payload.value = await getJson(withSource('/api/optimize') + sn)
     await nextTick()
     drawPie()
   } catch (e) {

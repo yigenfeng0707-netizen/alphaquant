@@ -1,9 +1,10 @@
 """Generate 12-page AlphaQuant pitch deck. Numbers match offline case1 API / UI."""
+
 from __future__ import annotations
 
 from pathlib import Path
 
-from lxml import etree
+from lxml.etree import SubElement
 from pptx import Presentation
 from pptx.dml.color import RGBColor
 from pptx.enum.shapes import MSO_SHAPE
@@ -34,7 +35,7 @@ def _set_ea(run, name: str = FONT) -> None:
     for tag in ("a:latin", "a:ea", "a:cs"):
         el = rPr.find(qn(tag))
         if el is None:
-            el = etree.SubElement(rPr, qn(tag))
+            el = SubElement(rPr, qn(tag))
         el.set("typeface", name)
 
 
@@ -66,7 +67,9 @@ def tb(slide, l, t, w, h):
     return slide.shapes.add_textbox(l, t, w, h)
 
 
-def write_lines(tf, lines, size=18, color=CREAM, bold=False, align=PP_ALIGN.LEFT, space=10):
+def write_lines(
+    tf, lines, size=18, color=CREAM, bold=False, align=PP_ALIGN.LEFT, space=10
+):
     tf.word_wrap = True
     tf.clear()
     for i, line in enumerate(lines):
@@ -109,7 +112,9 @@ def card(slide, l, t, w, h, heading, body_lines, accent=GOLD):
     box(slide, l, t, Inches(0.08), h, accent)
     ht = tb(slide, l + Inches(0.22), t + Inches(0.12), w - Inches(0.35), Inches(0.4))
     write_lines(ht.text_frame, [heading], size=16, bold=True, color=GOLD, space=0)
-    bt = tb(slide, l + Inches(0.22), t + Inches(0.52), w - Inches(0.35), h - Inches(0.65))
+    bt = tb(
+        slide, l + Inches(0.22), t + Inches(0.52), w - Inches(0.35), h - Inches(0.65)
+    )
     write_lines(bt.text_frame, body_lines, size=14, color=CREAM, space=6)
 
 
@@ -124,11 +129,18 @@ def build() -> Path:
     box(s, 0, 0, W, Inches(0.18), GOLD)
     box(s, 0, H - Inches(0.18), W, Inches(0.18), GOLD)
     t = tb(s, Inches(0.8), Inches(1.4), Inches(11.6), Inches(0.5))
-    write_lines(t.text_frame, ["2026 上海（长三角）中青年工程师创新创业大赛 · 金融科技"], size=16, color=GOLD)
+    write_lines(
+        t.text_frame,
+        ["2026 上海（长三角）中青年工程师创新创业大赛 · 金融科技"],
+        size=16,
+        color=GOLD,
+    )
     t = tb(s, Inches(0.8), Inches(2.0), Inches(11.6), Inches(1.2))
     write_lines(t.text_frame, ["AlphaQuant"], size=54, bold=True, color=WHITE)
     t = tb(s, Inches(0.8), Inches(3.2), Inches(11.6), Inches(0.8))
-    write_lines(t.text_frame, ["基于因子增强与风险平价的智能资产配置平台"], size=22, color=CREAM)
+    write_lines(
+        t.text_frame, ["基于因子增强与风险平价的智能资产配置平台"], size=22, color=CREAM
+    )
     t = tb(s, Inches(0.8), Inches(4.3), Inches(11.6), Inches(1.6))
     write_lines(
         t.text_frame,
@@ -144,21 +156,106 @@ def build() -> Path:
 
     # 2 痛点
     s = new_slide(prs)
-    title_bar(s, "痛点：专业配置进不了浏览器", "真实需求是「能点开的研究闭环」，不是全国股民都已是用户")
-    card(s, Inches(0.45), Inches(1.25), Inches(6.0), Inches(2.35), "门槛高", ["专业终端年费高，小型团队和个人用不起。", "量化流程往往要求会写代码，研究留痕靠表格拼接。"])
-    card(s, Inches(6.7), Inches(1.25), Inches(6.0), Inches(2.35), "风控弱", ["常见工具停在单一收益指标。", "VaR / 压力测试、适当性匹配、归因对账不在同一套引擎。"])
-    card(s, Inches(0.45), Inches(3.8), Inches(6.0), Inches(2.55), "案例 1 场景", ["个人投资者 10 万元闲置资金。", "需要：选股 → 风险平价 → 看清回撤与 VaR。", "现场按钮：仪表盘「一键演示案例 1」。"])
-    card(s, Inches(6.7), Inches(3.8), Inches(6.0), Inches(2.55), "案例 2 场景", ["小型私募研究团队要可复现流程。", "批量回测 + Brinson + 标准化报告。", "1 亿元是名义演示本金，不是实盘资产管理规模。"])
+    title_bar(
+        s,
+        "痛点：专业配置进不了浏览器",
+        "真实需求是「能点开的研究闭环」，不是全国股民都已是用户",
+    )
+    card(
+        s,
+        Inches(0.45),
+        Inches(1.25),
+        Inches(6.0),
+        Inches(2.35),
+        "门槛高",
+        [
+            "专业终端年费高，小型团队和个人用不起。",
+            "量化流程往往要求会写代码，研究留痕靠表格拼接。",
+        ],
+    )
+    card(
+        s,
+        Inches(6.7),
+        Inches(1.25),
+        Inches(6.0),
+        Inches(2.35),
+        "风控弱",
+        [
+            "常见工具停在单一收益指标。",
+            "VaR / 压力测试、适当性匹配、归因对账不在同一套引擎。",
+        ],
+    )
+    card(
+        s,
+        Inches(0.45),
+        Inches(3.8),
+        Inches(6.0),
+        Inches(2.55),
+        "案例 1 场景",
+        [
+            "个人投资者 10 万元闲置资金。",
+            "需要：选股 → 风险平价 → 看清回撤与 VaR。",
+            "现场按钮：仪表盘「一键演示案例 1」。",
+        ],
+    )
+    card(
+        s,
+        Inches(6.7),
+        Inches(3.8),
+        Inches(6.0),
+        Inches(2.55),
+        "案例 2 场景",
+        [
+            "小型私募研究团队要可复现流程。",
+            "批量回测 + Brinson + 标准化报告。",
+            "1 亿元是名义演示本金，不是实盘资产管理规模。",
+        ],
+    )
 
     # 3 五创新点
     s = new_slide(prs)
-    title_bar(s, "五个创新点（均已可点开）", "申报书承诺与当前仓库对齐；大模型策略仍是 2027 规划")
+    title_bar(
+        s,
+        "五个创新点（均已可点开）",
+        "申报书承诺与当前仓库对齐；大模型策略仍是 2027 规划",
+    )
     items = [
-        ("1 因子增强选股", ["12 个可计算因子", "截面标准化 + IC/IR 动态加权", "按钮：选股「刷新选股」"]),
-        ("2 风险平价组合", ["SciPy SLSQP 等风险贡献", "可与等权对照", "按钮：组合「优化入选篮子」"]),
-        ("3 全链路同一引擎", ["选股→回测→组合→风控", "FastAPI + Vue 3，无需编程", "侧栏七页同一套数据源"]),
-        ("4 压力测试预警", ["历史模拟 VaR / CVaR", "极端窗口与情景冲击", "按钮：风控「评估风险平价组合」"]),
-        ("5 投资适当性", ["问卷分档 + 匹配拦截", "本地审计，不采集身份证", "按钮：适当性「提交问卷并匹配」"]),
+        (
+            "1 因子增强选股",
+            [
+                "12 个可计算因子",
+                "截面标准化 + IC/IR 动态加权",
+                "按钮：选股「刷新选股」",
+            ],
+        ),
+        (
+            "2 风险平价组合",
+            ["SciPy SLSQP 等风险贡献", "可与等权对照", "按钮：组合「优化入选篮子」"],
+        ),
+        (
+            "3 全链路同一引擎",
+            [
+                "选股→回测→组合→风控",
+                "FastAPI + Vue 3，无需编程",
+                "侧栏七页同一套数据源",
+            ],
+        ),
+        (
+            "4 压力测试预警",
+            [
+                "历史模拟 VaR / CVaR",
+                "极端窗口与情景冲击",
+                "按钮：风控「评估风险平价组合」",
+            ],
+        ),
+        (
+            "5 投资适当性",
+            [
+                "问卷分档 + 匹配拦截",
+                "本地审计，不采集身份证",
+                "按钮：适当性「提交问卷并匹配」",
+            ],
+        ),
     ]
     for i, (h, body) in enumerate(items):
         x = Inches(0.35 + (i % 5) * 2.58)
@@ -166,7 +263,11 @@ def build() -> Path:
 
     # 4 产品闭环
     s = new_slide(prs)
-    title_bar(s, "产品闭环：七页都能走通", "数据源默认「离线演示（可断网）」；公开行情走自动并允许降级")
+    title_bar(
+        s,
+        "产品闭环：七页都能走通",
+        "数据源默认「离线演示（可断网）」；公开行情走自动并允许降级",
+    )
     pages = [
         ("仪表盘", "一键演示案例 1"),
         ("选股", "刷新选股"),
@@ -187,7 +288,11 @@ def build() -> Path:
 
     # 5 案例1
     s = new_slide(prs)
-    title_bar(s, "案例 1 现场演示（离线样本）", "点「一键演示案例 1」。数字来自 2026-09-10 本地 API，仪表盘两位小数。")
+    title_bar(
+        s,
+        "案例 1 现场演示（离线样本）",
+        "点「一键演示案例 1」。数字来自 2026-09-10 本地 API，仪表盘两位小数。",
+    )
     kpis = [
         ("风险平价夏普", "0.20", GREEN),
         ("等权夏普", "-0.07", RED),
@@ -234,7 +339,11 @@ def build() -> Path:
 
     # 6 适当性
     s = new_slide(prs)
-    title_bar(s, "创新点五：适当性匹配（可拦截）", "本地演示规则，不是持牌机构适当性，不采集身份证")
+    title_bar(
+        s,
+        "创新点五：适当性匹配（可拦截）",
+        "本地演示规则，不是持牌机构适当性，不采集身份证",
+    )
     card(
         s,
         Inches(0.45),
@@ -268,7 +377,9 @@ def build() -> Path:
 
     # 7 案例2
     s = new_slide(prs)
-    title_bar(s, "案例 2：小型私募研究流程", "按钮：运行案例 2 批量回测 → 生成并导出风控报告")
+    title_bar(
+        s, "案例 2：小型私募研究流程", "按钮：运行案例 2 批量回测 → 生成并导出风控报告"
+    )
     kpis = [
         ("配置效应", "4.65%"),
         ("选择效应", "3.16%"),
@@ -313,84 +424,184 @@ def build() -> Path:
 
     # 8 技术栈
     s = new_slide(prs)
-    title_bar(s, "技术栈：本机可复现", "后端 8010 · 前端 localhost:3000 · 一条 PowerShell 启动")
-    card(s, Inches(0.45), Inches(1.25), Inches(6.05), Inches(5.1), "已交付", [
-        "FastAPI + Uvicorn + Pydantic",
-        "Vue 3 + Vite + Element Plus + ECharts",
-        "Pandas / NumPy / SciPy（风险平价 SLSQP）",
-        "数据：AKShare 自动；失败或断网降级 data/offline/",
-        "OpenAPI：http://127.0.0.1:8010/docs",
-        "启动：.\\scripts\\dev.ps1",
-    ])
-    card(s, Inches(6.7), Inches(1.25), Inches(6.05), Inches(5.1), "明确未接", [
-        "未接入大模型（申报书第三阶段，2027-01 至 06，规划）",
-        "未接支付 / SaaS 计费",
-        "未接下单与券商柜台",
-        "TensorFlow 不在当前选股引擎里",
-        "公网魔搭 Demo 本轮不部署，避免消耗 Token",
-        "本场品牌只有 AlphaQuant，不讲其他杯赛数字",
-    ])
+    title_bar(
+        s,
+        "技术栈：本机可复现",
+        "后端 8010 · 前端 localhost:3000 · 一条 PowerShell 启动",
+    )
+    card(
+        s,
+        Inches(0.45),
+        Inches(1.25),
+        Inches(6.05),
+        Inches(5.1),
+        "已交付",
+        [
+            "FastAPI + Uvicorn + Pydantic",
+            "Vue 3 + Vite + Element Plus + ECharts",
+            "Pandas / NumPy / SciPy（风险平价 SLSQP）",
+            "数据：AKShare 自动；失败或断网降级 data/offline/",
+            "OpenAPI：http://127.0.0.1:8010/docs",
+            "启动：.\\scripts\\dev.ps1",
+        ],
+    )
+    card(
+        s,
+        Inches(6.7),
+        Inches(1.25),
+        Inches(6.05),
+        Inches(5.1),
+        "明确未接",
+        [
+            "未接入大模型（申报书第三阶段，2027-01 至 06，规划）",
+            "未接支付 / SaaS 计费",
+            "未接下单与券商柜台",
+            "TensorFlow 不在当前选股引擎里",
+            "公网魔搭 Demo 本轮不部署，避免消耗 Token",
+            "本场品牌只有 AlphaQuant，不讲其他杯赛数字",
+        ],
+    )
 
     # 9 商业模式
     s = new_slide(prs)
-    title_bar(s, "商业模式（规划，产品未收费）", "评审问「怎么赚钱」：讲路径；问「现在赚多少」：还没有")
-    card(s, Inches(0.45), Inches(1.25), Inches(4.0), Inches(5.1), "用户", [
-        "个人投资者（案例 1）",
-        "管理规模 1–10 亿的小型私募研究团队（案例 2 场景）",
-        "财富管理机构的研究助理",
-        "当前形态：研发中的可演示产品",
-    ])
-    card(s, Inches(4.65), Inches(1.25), Inches(4.0), Inches(5.1), "设想定价", [
-        "专业版订阅（申报书扫描件曾写 99 元/月）",
-        "机构研究席位",
-        "都是设想，产品未接支付",
-        "不把 TAM 说成已经占领的份额",
-    ])
-    card(s, Inches(8.85), Inches(1.25), Inches(4.0), Inches(5.1), "第四阶段目标", [
-        "2027 下半年用户运营",
-        "规划：10 万注册、付费与收入数字",
-        "状态：规划，不是现状",
-        "不要把规划注册数讲成已经达成",
-    ])
+    title_bar(
+        s,
+        "商业模式（规划，产品未收费）",
+        "评审问「怎么赚钱」：讲路径；问「现在赚多少」：还没有",
+    )
+    card(
+        s,
+        Inches(0.45),
+        Inches(1.25),
+        Inches(4.0),
+        Inches(5.1),
+        "用户",
+        [
+            "个人投资者（案例 1）",
+            "管理规模 1–10 亿的小型私募研究团队（案例 2 场景）",
+            "财富管理机构的研究助理",
+            "当前形态：研发中的可演示产品",
+        ],
+    )
+    card(
+        s,
+        Inches(4.65),
+        Inches(1.25),
+        Inches(4.0),
+        Inches(5.1),
+        "设想定价",
+        [
+            "专业版订阅（申报书扫描件曾写 99 元/月）",
+            "机构研究席位",
+            "都是设想，产品未接支付",
+            "不把 TAM 说成已经占领的份额",
+        ],
+    )
+    card(
+        s,
+        Inches(8.85),
+        Inches(1.25),
+        Inches(4.0),
+        Inches(5.1),
+        "第四阶段目标",
+        [
+            "2027 下半年用户运营",
+            "规划：10 万注册、付费与收入数字",
+            "状态：规划，不是现状",
+            "不要把规划注册数讲成已经达成",
+        ],
+    )
 
     # 10 社会效益
     s = new_slide(prs)
-    title_bar(s, "社会效益：把研究流程做成可验证的公共能力", "金融科技赛道：应用研究 + 产品研发，而不是口号普惠")
-    card(s, Inches(0.45), Inches(1.25), Inches(6.05), Inches(2.4), "降低门槛", [
-        "浏览器即可走完选股、配置、风控，不必先会写策略代码。",
-        "离线样本保证评委电脑无网也能复核。",
-    ])
-    card(s, Inches(6.7), Inches(1.25), Inches(6.05), Inches(2.4), "可对账", [
-        "Brinson 配置/选择/交互可加总核对超额。",
-        "标准化风控报告结构化导出，研究留痕。",
-    ])
-    card(s, Inches(0.45), Inches(3.85), Inches(6.05), Inches(2.4), "适当性意识", [
-        "用可拦截的匹配规则提醒「产品风险要和人匹配」。",
-        "诚实边界：这不是持牌合规系统。",
-    ])
-    card(s, Inches(6.7), Inches(3.85), Inches(6.05), Inches(2.4), "工程师创新", [
-        "在职工程师业余把申报书里的引擎做成可点产品。",
-        "符合「正处于研发过程中的创新型项目」。",
-    ])
+    title_bar(
+        s,
+        "社会效益：把研究流程做成可验证的公共能力",
+        "金融科技赛道：应用研究 + 产品研发，而不是口号普惠",
+    )
+    card(
+        s,
+        Inches(0.45),
+        Inches(1.25),
+        Inches(6.05),
+        Inches(2.4),
+        "降低门槛",
+        [
+            "浏览器即可走完选股、配置、风控，不必先会写策略代码。",
+            "离线样本保证评委电脑无网也能复核。",
+        ],
+    )
+    card(
+        s,
+        Inches(6.7),
+        Inches(1.25),
+        Inches(6.05),
+        Inches(2.4),
+        "可对账",
+        [
+            "Brinson 配置/选择/交互可加总核对超额。",
+            "标准化风控报告结构化导出，研究留痕。",
+        ],
+    )
+    card(
+        s,
+        Inches(0.45),
+        Inches(3.85),
+        Inches(6.05),
+        Inches(2.4),
+        "适当性意识",
+        [
+            "用可拦截的匹配规则提醒「产品风险要和人匹配」。",
+            "诚实边界：这不是持牌合规系统。",
+        ],
+    )
+    card(
+        s,
+        Inches(6.7),
+        Inches(3.85),
+        Inches(6.05),
+        Inches(2.4),
+        "工程师创新",
+        [
+            "在职工程师业余把申报书里的引擎做成可点产品。",
+            "符合「正处于研发过程中的创新型项目」。",
+        ],
+    )
 
     # 11 下一步
     s = new_slide(prs)
     title_bar(s, "下一步与诚实边界", "初赛要可验证产品；决赛再谈合作与迭代")
-    card(s, Inches(0.45), Inches(1.25), Inches(6.05), Inches(5.1), "规划节奏", [
-        "2026-07 至 09：核心引擎与 A 股演示（当前）",
-        "2026-10 至 12：基金/债券等多资产（未开始）",
-        "2027-01 至 06：探索大模型自然语言策略（规划）",
-        "2027-07 至 12：用户运营目标（规划）",
-        "本周：创始人电话核实黄浦初赛形式与材料清单",
-    ])
-    card(s, Inches(6.7), Inches(1.25), Inches(6.05), Inches(5.1), "当场禁语", [
+    card(
+        s,
+        Inches(0.45),
+        Inches(1.25),
+        Inches(6.05),
+        Inches(5.1),
+        "规划节奏",
+        [
+            "2026-07 至 09：核心引擎与 A 股演示（当前）",
+            "2026-10 至 12：基金/债券等多资产（未开始）",
+            "2027-01 至 06：探索大模型自然语言策略（规划）",
+            "2027-07 至 12：用户运营目标（规划）",
+            "初赛 9.18-19 科学会堂 8+7 答辩；PPT 9.16 17:00 前提交",
+        ],
+    )
+    card(
+        s,
+        Inches(6.7),
+        Inches(1.25),
+        Inches(6.05),
+        Inches(5.1),
+        "当场禁语",
+        [
             "其他杯赛品牌、他赛回测数字与编号（本场只用 AlphaQuant）",
             "把规划中的模型能力或注册数讲成已经上线",
             "真实持仓、已经下单、实盘成交",
             "把名义一亿元说成实盘资产管理规模",
-        "把离线合成样本叫做真实行情",
-        "把回测夏普 0.20 说成承诺收益",
-    ])
+            "把离线合成样本叫做真实行情",
+            "把回测夏普 0.20 说成承诺收益",
+        ],
+    )
 
     # 12 结束
     s = prs.slides.add_slide(prs.slide_layouts[6])

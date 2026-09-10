@@ -6,3 +6,4 @@ numpy==2.2.1
 scipy==1.18.0
 akshare==1.17.86
 python-multipart==0.0.20
+pytest==9.1.1

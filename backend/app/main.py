@@ -11,6 +11,7 @@ from app.api.attribution import router as attribution_router
 from app.api.backtest import router as backtest_router
 from app.api.case1 import router as case1_router
 from app.api.case2 import router as case2_router
+from app.api.llm import router as llm_router
 from app.api.optimize import router as optimize_router
 from app.api.risk import router as risk_router
 from app.api.screen import router as screen_router
@@ -18,7 +19,9 @@ from app.api.suitability import router as suitability_router
 from app.api import router as health_router
 from app.config import APP_NAME, APP_VERSION, DISCLAIMER, ROOT
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s"
+)
 
 
 def resolve_static_dir() -> Path | None:
@@ -64,6 +67,7 @@ app.include_router(case1_router)
 app.include_router(suitability_router)
 app.include_router(attribution_router)
 app.include_router(case2_router)
+app.include_router(llm_router)
 
 
 @app.get("/")

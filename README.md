@@ -70,9 +70,16 @@ python .\scripts\robustness_api.py
 
 查询参数 `source=offline|auto`。
 
+## 系统架构
+
+![AlphaQuant 系统架构](docs/architecture-diagram-20260910201829162.png)
+
+全链路：数据源（AKShare / 离线合成）→ provider.py 数据封装 → 六大引擎（factors / backtest / optimizer / risk / attribution / suitability）→ services.py + report.py 服务编排 → FastAPI 14 条 REST 端点 → Vue 3 前端 7 页面。
+
 ## 文档
 
 - [docs/SCOPE.md](docs/SCOPE.md) 做/不做与禁语
+- [docs/architecture-diagram-20260910201829162.png](docs/architecture-diagram-20260910201829162.png) 系统架构图
 - [docs/contest-rules-notes.md](docs/contest-rules-notes.md) 初赛规则核对
 - [docs/用户手册.md](docs/用户手册.md)
 - [docs/demo-script.md](docs/demo-script.md)

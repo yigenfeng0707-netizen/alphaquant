@@ -1,4 +1,5 @@
 """Market data: AKShare with timeout, then offline synthetic demo panel."""
+
 from __future__ import annotations
 
 import json
@@ -10,7 +11,12 @@ from typing import Literal
 import numpy as np
 import pandas as pd
 
-from app.config import AKSHARE_OVERALL_SEC, AKSHARE_TIMEOUT_SEC, OFFLINE_DIR
+from app.config import (
+    AKSHARE_FUND_SEC,
+    AKSHARE_OVERALL_SEC,
+    AKSHARE_TIMEOUT_SEC,
+    OFFLINE_DIR,
+)
 
 logger = logging.getLogger("alphaquant.data")
 
@@ -59,12 +65,18 @@ def load_offline() -> MarketData:
     prices = pd.read_csv(OFFLINE_DIR / "prices.csv", parse_dates=["date"])
     universe = pd.read_csv(OFFLINE_DIR / "universe.csv")
     meta_path = OFFLINE_DIR / "meta.json"
-    meta = json.loads(meta_path.read_text(encoding="utf-8")) if meta_path.exists() else {}
+    meta = (
+        json.loads(meta_path.read_text(encoding="utf-8")) if meta_path.exists() else {}
+    )
     close = prices.pivot(index="date", columns="code", values="close").sort_index()
     volume = prices.pivot(index="date", columns="code", values="volume").sort_index()
     close.columns = [str(c) for c in close.columns]
     volume.columns = [str(c) for c in volume.columns]
-    logger.info("data_source=offline_synthetic_demo rows=%s names=%s", len(close), close.shape[1])
+    logger.info(
+        "data_source=offline_synthetic_demo rows=%s names=%s",
+        len(close),
+        close.shape[1],
+    )
     return MarketData(
         close=close,
         volume=volume.reindex(columns=close.columns),
@@ -105,6 +117,71 @@ def _fetch_one_ak(symbol: str, start: str, end: str) -> pd.DataFrame | None:
     )
     out["code"] = symbol
     return out.dropna(subset=["close"])
+
+
+def _fetch_fundamentals_ak(code: str) -> tuple[float, float, float]:
+    """Fetch PE / PB / ROE for a single stock from AKShare.
+
+    Returns (pe, pb, roe) where roe is in decimal (e.g. 0.12 = 12%).
+    On any failure returns (nan, nan, nan).
+    """
+    import akshare as ak
+
+    pe = pb = roe = float("nan")
+
+    # --- PE (TTM) ---
+    try:
+        df_pe = ak.stock_zh_valuation_baidu(
+            symbol=code,
+            indicator="\u5e02\u76c8\u7387(TTM)",
+            period="\u8fd1\u4e00\u5e74",
+        )
+        if df_pe is not None and len(df_pe) > 0:
+            v = df_pe.iloc[-1]["value"]
+            if pd.notna(v) and float(v) > 0:
+                pe = float(v)
+    except Exception as exc:
+        logger.debug("akshare PE fetch %s failed: %s", code, exc)
+
+    # --- PB ---
+    try:
+        df_pb = ak.stock_zh_valuation_baidu(
+            symbol=code, indicator="\u5e02\u51c0\u7387", period="\u8fd1\u4e00\u5e74"
+        )
+        if df_pb is not None and len(df_pb) > 0:
+            v = df_pb.iloc[-1]["value"]
+            if pd.notna(v) and float(v) > 0:
+                pb = float(v)
+    except Exception as exc:
+        logger.debug("akshare PB fetch %s failed: %s", code, exc)
+
+    # --- ROE (from financial abstract) ---
+    try:
+        df_fin = ak.stock_financial_abstract(symbol=code)
+        if df_fin is not None and len(df_fin) > 0:
+            # Find row containing ROE
+            mask = (
+                df_fin["\u6307\u6807"]
+                .astype(str)
+                .str.contains("\u51c0\u8d44\u4ea7\u6536\u76ca\u7387", na=False)
+            )
+            if mask.any():
+                row = df_fin.loc[mask].iloc[0]
+                # Scan date columns left-to-right for the first non-NaN
+                date_cols = [
+                    c
+                    for c in df_fin.columns
+                    if c not in ("\u9009\u9879", "\u6307\u6807")
+                ]
+                for dc in date_cols:
+                    v = row[dc]
+                    if pd.notna(v) and float(v) != 0:
+                        roe = float(v) / 100.0  # percentage -> decimal
+                        break
+    except Exception as exc:
+        logger.debug("akshare ROE fetch %s failed: %s", code, exc)
+
+    return pe, pb, roe
 
 
 def try_akshare() -> MarketData | None:
@@ -148,6 +225,35 @@ def try_akshare() -> MarketData | None:
     universe["pb"] = np.nan
     universe["roe"] = np.nan
     universe["mcap"] = last.reindex(universe["code"]).to_numpy() * 1e9
+
+    # --- Fetch fundamentals (PE / PB / ROE) with separate timeout budget ---
+    fund_t0 = time.time()
+    fund_ok = 0
+    for i, row in universe.iterrows():
+        if time.time() - fund_t0 > AKSHARE_FUND_SEC:
+            logger.warning(
+                "akshare fundamentals timeout at %s (%d/%d done)",
+                row["code"],
+                fund_ok,
+                len(universe),
+            )
+            break
+        try:
+            pe, pb, roe = _fetch_fundamentals_ak(str(row["code"]))
+        except Exception as exc:
+            logger.warning("akshare fundamentals %s failed: %s", row["code"], exc)
+            pe = pb = roe = float("nan")
+        if pd.notna(pe):
+            universe.loc[i, "pe"] = pe
+        if pd.notna(pb):
+            universe.loc[i, "pb"] = pb
+        if pd.notna(roe):
+            universe.loc[i, "roe"] = roe
+        if pd.notna(pe) and pd.notna(pb) and pd.notna(roe):
+            fund_ok += 1
+    logger.info(
+        "akshare fundamentals: %d/%d stocks have full PE+PB+ROE", fund_ok, len(universe)
+    )
     logger.info("data_source=akshare rows=%s names=%s", len(close), close.shape[1])
     return MarketData(
         close=close,

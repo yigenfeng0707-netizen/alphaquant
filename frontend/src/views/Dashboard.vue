@@ -7,7 +7,15 @@
     <el-button data-testid="btn-go-screen" @click="go('/screen')">去选股</el-button>
     <el-button data-testid="btn-go-suitability" @click="go('/suitability')">适当性问卷</el-button>
     <el-button data-testid="btn-go-case2" @click="go('/case2')">打开案例 2</el-button>
-    <div v-if="error" class="placeholder-box" style="margin-top:12px">{{ error }}</div>
+    <div v-if="error" class="placeholder-box" style="margin-top:12px">
+      <span>{{ error }}</span>
+      <el-button type="warning" size="small" style="margin-left:12px" :loading="loading" @click="runCase">重试</el-button>
+    </div>
+    <template v-else-if="!loading">
+      <div class="placeholder-box" style="margin-top:12px">
+        点击上方「一键演示案例 1」开始 — 因子选股 → 风险平价 → VaR 全链路。
+      </div>
+    </template>
     <template v-if="data">
       <div class="kpi-row" style="margin-top:16px">
         <div class="kpi">
@@ -138,7 +146,6 @@ async function runCase() {
 
 onMounted(() => {
   window.addEventListener('resize', onResize)
-  runCase()
 })
 onUnmounted(() => window.removeEventListener('resize', onResize))
 </script>
