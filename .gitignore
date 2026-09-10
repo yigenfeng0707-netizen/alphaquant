@@ -31,6 +31,9 @@ assets/证据-*
 _tmp_*
 _tmp_e2e_shots/
 .pytest_cache/
+.tmp/
+.dumate/
+.video_gen/
 
 # 根目录扫描件原件（归档副本已在 archive/，均不入库）
 /*.pdf
