@@ -21,15 +21,28 @@ jobs:
         run: |
           set -euo pipefail
           DEMO_URL="https://${MS_STUDIO_OWNER}-${MS_STUDIO_NAME}.ms.show"
+          UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
           echo "Target: $DEMO_URL"
           echo "Time (UTC): $(date -u '+%Y-%m-%d %H:%M:%S')"
-          http_code=$(curl -sS -L --max-time 30 \
-            -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" \
-            -o /dev/null -w '%{http_code}' "$DEMO_URL" || true)
+          http_code=$(curl -sS -L --max-time 30 -A "$UA" -o /dev/null -w '%{http_code}' "$DEMO_URL" || true)
           echo "HTTP status: $http_code"
           case "$http_code" in
             200|302)
-              echo "Keepalive success (instance reachable)"
+              echo "Instance reachable, verifying /health response body..."
+              health_code=$(curl -sS -L --max-time 30 -A "$UA" -o /tmp/health.json -w '%{http_code}' "$DEMO_URL/health" || true)
+              echo "health status: $health_code"
+              if [ "$health_code" != "200" ]; then
+                echo "ERROR: /health returned HTTP $health_code"
+                cat /tmp/health.json 2>/dev/null || true
+                exit 1
+              fi
+              if ! jq -e '.ok == true' /tmp/health.json >/dev/null 2>&1; then
+                echo "ERROR: /health body check failed (expected {\"ok\": true})"
+                cat /tmp/health.json 2>/dev/null || true
+                exit 1
+              fi
+              echo "health body: $(jq -c '{ok, service, version}' /tmp/health.json)"
+              echo "Keepalive success (instance reachable, /health ok)"
               ;;
             403)
               echo "HTTP 403 — studio may be private; ping logged, workflow not failed"
