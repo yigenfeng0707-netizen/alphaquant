@@ -68,7 +68,19 @@ HEALTH_PATH = os.environ.get("HEALTH_PATH", "/health")  # 健康检查路径
 HEALTH_EXPECT = os.environ.get(
     "HEALTH_EXPECT", '"ok":true'
 )  # 健康响应需包含的文本（键带引号）
-API_SAMPLE_PATH = os.environ.get("API_SAMPLE_PATH", "")  # 抽查的业务只读接口（可选）
+# 抽查的业务只读接口（逗号分隔可传多个；默认基于目标其实业务端点，可按项目覆盖）。
+# 判据升级：仅 HTTP 200 不够——SPA fallback 会让任意未知路径也返回 200 + index.html，
+# 必须同时校验 Content-Type 为 application/json 且响应体含 "ok":true 才算业务接口存活。
+API_SAMPLE_PATH = os.environ.get(
+    "API_SAMPLE_PATH",
+    "/api/screen,/api/backtest/walk-forward,/api/suitability,/api/optimize",
+)
+API_JSON_KEY = os.environ.get(
+    "API_JSON_KEY", '"ok":true'
+)  # 响应体必须包含的 JSON 键（含引号）
+API_CTYPE = os.environ.get(
+    "API_CTYPE", "application/json"
+)  # 期望的 Content-Type（含即通过）
 
 UA = os.environ.get(
     "UA",
@@ -100,8 +112,8 @@ def fail(msg: str) -> None:
 
 def http_get(
     url: str, headers: dict | None = None, timeout: int = TIMEOUT
-) -> tuple[int, str]:
-    """GET 请求，返回 (HTTP状态码, 响应文本)。无法连接时返回 (-1, '')。"""
+) -> tuple[int, str, str]:
+    """GET 请求，返回 (HTTP状态码, 响应文本, Content-Type)。无法连接时返回 (-1, '', '')。"""
     h = {
         "User-Agent": UA,
         "Accept": "application/vnd.github+json, text/html, */*",
@@ -113,12 +125,13 @@ def http_get(
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             code = resp.getcode()
             body = resp.read().decode("utf-8", errors="replace")
-            return code, body
+            ctype = resp.headers.get("Content-Type", "")
+            return code, body, ctype
     except urllib.error.HTTPError as e:
-        return e.code, ""
+        return e.code, "", e.headers.get("Content-Type", "") if e.headers else ""
     except urllib.error.URLError as e:
         print(f"  请求失败 {url}: {e.reason}")
-        return -1, ""
+        return -1, "", ""
 
 
 def usage() -> None:
@@ -196,7 +209,7 @@ def layer1(layers: str) -> None:
             "  警告: 无 GH_TOKEN/GH_TOKEN_FILE，只能看最新一次 run 结论，无法核对 commit"
         )
 
-    code, body = http_get(
+    code, body, _ = http_get(
         f"https://api.github.com/repos/{GH_REPO}/actions/runs?per_page=8", headers
     )
     if code != 200 or not body:
@@ -242,7 +255,9 @@ def layer2(layers: str) -> None:
         print("  未配置 STUDIO_URL，跳过第2层")
         return
 
-    code, page = http_get(STUDIO_URL, {"Accept": "text/html,application/xhtml+xml,*/*"})
+    code, page, _ = http_get(
+        STUDIO_URL, {"Accept": "text/html,application/xhtml+xml,*/*"}
+    )
     if code != 200 or not page:
         fail(f"空间页无响应: {STUDIO_URL} (HTTP {code})")
         return
@@ -272,27 +287,40 @@ def layer3(layers: str) -> None:
         print("  未配置 PUBLIC_BASE_URL，跳过第3层")
         return
 
-    code, _ = http_get(f"{PUBLIC_BASE_URL}/")
+    code, _, _ = http_get(f"{PUBLIC_BASE_URL}/")
     print(f"  主页 HTTP {code}")
     if code == 200:
         pass_("主页 200")
     else:
         fail(f"主页非 200 (实际 {code})")
 
-    code, health = http_get(f"{PUBLIC_BASE_URL}{HEALTH_PATH}")
+    code, health, _ = http_get(f"{PUBLIC_BASE_URL}{HEALTH_PATH}")
     print(f"  {HEALTH_PATH}: {health[:200]}")
     if HEALTH_EXPECT in health:
         pass_(f"{HEALTH_PATH} 含 [{HEALTH_EXPECT}]")
     else:
         fail(f"{HEALTH_PATH} 未含 [{HEALTH_EXPECT}]")
 
+    # 业务接口抽查：支持逗号分隔多个路径；判据 = HTTP 200
+    # + Content-Type 含 application/json + 响应体含 "ok":true
+    # （防 SPA fallback：未知路径也返回 200+HTML，仅看状态码会误报）
     if API_SAMPLE_PATH:
-        apicode, _ = http_get(f"{PUBLIC_BASE_URL}{API_SAMPLE_PATH}")
-        print(f"  业务接口 {API_SAMPLE_PATH} HTTP {apicode}")
-        if apicode == 200:
-            pass_("业务接口 200")
-        else:
-            fail(f"业务接口非 200 (实际 {apicode})")
+        for _p in [p.strip() for p in API_SAMPLE_PATH.split(",") if p.strip()]:
+            apicode, abody, actype = http_get(f"{PUBLIC_BASE_URL}{_p}")
+            ctype_ok = API_CTYPE.lower() in actype.lower()
+            json_ok = abody.strip() and API_JSON_KEY in abody
+            ok = apicode == 200 and ctype_ok and json_ok
+            print(
+                f"  业务接口 {_p} HTTP {apicode} | Content-Type: {actype or '(空)'} "
+                f"| JSON[{API_JSON_KEY}]: {'是' if json_ok else '否'}"
+            )
+            if ok:
+                pass_(f"业务接口 {_p} 存活：200 + {API_CTYPE} + 含 {API_JSON_KEY}")
+            else:
+                fail(
+                    f"业务接口 {_p} 校验失败（须 200 + {API_CTYPE} + 含 {API_JSON_KEY}；"
+                    f"实际 {apicode}/{actype or '无CT'}/{'有key' if json_ok else '无key'}）"
+                )
 
 
 # ---------------------------------------------------------------------------

@@ -44,9 +44,15 @@ STATUS_EXPECT="${STATUS_EXPECT:-Running}"             # 第2层期望状态值�
 PUBLIC_BASE_URL="${PUBLIC_BASE_URL:-}"  # 公网根地址；空则跳过第3层
 HEALTH_PATH="${HEALTH_PATH:-/health}"   # 健康检查路径
 HEALTH_EXPECT="${HEALTH_EXPECT:-\"ok\":true}" # /health 响应需包含的文本（注意 JSON 键带引号，默认 "ok":true）
-API_SAMPLE_PATH="${API_SAMPLE_PATH:-}"  # 抽查的业务只读接口（可选，如 /api/markets）
+# 抽查的业务只读接口（逗号分隔可传多个；默认基于目标其实业务端点，可按项目覆盖）。
+# 判据升级：仅 HTTP 200 不够——SPA fallback 会让任意未知路径也返回 200 + index.html，
+# 必须同时校验 Content-Type 含 application/json 且响应体含 "ok":true 才算业务接口存活。
+API_SAMPLE_PATH="${API_SAMPLE_PATH:-/api/screen,/api/backtest/walk-forward,/api/suitability,/api/optimize}"
+API_JSON_KEY="${API_JSON_KEY:-\"ok\":true}"                     # 响应体必须包含的 JSON 键（含引号）
+API_CTYPE="${API_CTYPE:-application/json}"                     # 期望的 Content-Type（含即通过）
 UA="${UA:-Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36}"
 TIMEOUT="${TIMEOUT:-20}"            # curl 超时秒数
+TMP_EXTRA="${TMPDIR:-/tmp}/aq_verify_$$"  # 临时响应文件前缀
 # ---------------------------------------------------------------------------
 
 LAYER_ALL="1,2,3"     # 全部层
@@ -162,9 +168,24 @@ layer3() {
   echo "$health" | grep -q "$HEALTH_EXPECT" && pass "${HEALTH_PATH} 含 [$HEALTH_EXPECT]" || fail "${HEALTH_PATH} 未含 [$HEALTH_EXPECT]"
 
   if [ -n "$API_SAMPLE_PATH" ]; then
-    apicode=$(curl -s -A "$UA" -o /dev/null -w "%{http_code}" --max-time "$TIMEOUT" "${PUBLIC_BASE_URL}${API_SAMPLE_PATH}" || true)
-    echo "  业务接口 ${API_SAMPLE_PATH} HTTP $apicode"
-    [ "$apicode" = "200" ] && pass "业务接口 200" || fail "业务接口非 200 (实际 $apicode)"
+    IFS=',' read -ra paths <<< "$API_SAMPLE_PATH"
+    for p in "${paths[@]}"; do
+      p=$(echo "$p" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
+      [ -z "$p" ] && continue
+      tmpbody="${TMP_EXTRA}_body.txt"
+      meta=$(curl -s -A "$UA" -o "$tmpbody" -w "%{http_code}|%{content_type}" --max-time "$TIMEOUT" "${PUBLIC_BASE_URL}${p}" || true)
+      apicode="${meta%%|*}"
+      ctype="${meta#*|}"
+      c_ok=$(echo "$ctype" | grep -qi "$API_CTYPE" && echo 1 || echo 0)
+      b_ok=$(grep -q "$API_JSON_KEY" "$tmpbody" 2>/dev/null && echo 1 || echo 0)
+      rm -f "$tmpbody"
+      echo "  业务接口 ${p} HTTP=$apicode CT=$ctype json_key=$b_ok"
+      if [ "$apicode" = "200" ] && [ "$c_ok" = "1" ] && [ "$b_ok" = "1" ]; then
+        pass "业务接口 ${p} 200 + JSON + [$API_JSON_KEY]"
+      else
+        fail "业务接口 ${p} 判据不满足 (code=$apicode, json=$b_ok, 期望 CT=$API_CTYPE 实际=$ctype)"
+      fi
+    done
   fi
 }
 

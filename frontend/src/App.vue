@@ -1,5 +1,6 @@
 <template>
-  <div class="shell">
+  <el-config-provider :locale="zhCn">
+    <div class="shell">
     <aside>
       <div class="brand">
         <div class="logo">AQ</div>
@@ -30,15 +31,17 @@
         <span>{{ $route.meta.title }}</span>
         <span class="badge-src">{{ source === 'offline' ? '离线演示' : '自动/可能降级' }}</span>
       </header>
-      <router-view />
+<router-view />
     </main>
-  </div>
+    </div>
+  </el-config-provider>
 </template>
 
 <script setup>
 import { nextTick, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import { getSource, setSource } from './api/client'
 
 const router = useRouter()

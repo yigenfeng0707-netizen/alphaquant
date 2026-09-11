@@ -81,7 +81,7 @@
 
 <script setup>
 import { computed, nextTick, onMounted, ref } from 'vue'
-import * as echarts from 'echarts'
+import echarts from '../utils/echarts'
 import { ElMessage } from 'element-plus'
 import { getJson, withSource, num, pct } from '../api/client'
 
